@@ -24,6 +24,9 @@ public class TimeEntriesController : ControllerBase
         return Guid.Parse(User.FindFirstValue("sub")!);
     }
 
+    // DTO for binding input safely
+    public record StartTimerRequest(Guid ProjectId, string? Notes);
+
     [HttpGet("active")]
     public async Task<IActionResult> GetActive()
     {
@@ -36,7 +39,7 @@ public class TimeEntriesController : ControllerBase
     }
 
     [HttpPost("start")]
-    public async Task<IActionResult> Start([FromBody] Guid projectId)
+    public async Task<IActionResult> Start([FromBody] StartTimerRequest request)
     {
         var userId = GetUserId();
 
@@ -50,9 +53,10 @@ public class TimeEntriesController : ControllerBase
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            ProjectId = projectId,
+            ProjectId = request.ProjectId,
             StartTime = DateTime.UtcNow,
-            IsRunning = true
+            IsRunning = true,
+            Notes = request.Notes // Assumes you have a Notes field on your TimeEntry model
         };
 
         _context.TimeEntries.Add(entry);
@@ -74,8 +78,7 @@ public class TimeEntriesController : ControllerBase
 
         entry.EndTime = DateTime.UtcNow;
         entry.IsRunning = false;
-        entry.DurationSeconds =
-            (int)(entry.EndTime.Value - entry.StartTime).TotalSeconds;
+        entry.DurationSeconds = (int)(entry.EndTime.Value - entry.StartTime).TotalSeconds;
 
         await _context.SaveChangesAsync();
 
